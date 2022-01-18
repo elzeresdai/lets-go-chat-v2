@@ -1,0 +1,7 @@
+time="2022-01-13T18:12:03+02:00" level=info msg="Start app" func="main.main()" file="main.go:11"
+time="2022-01-13T18:25:57+02:00" level=info msg="Start app" func="main.main()" file="main.go:11"
+time="2022-01-13T18:26:38+02:00" level=info msg="Start app" func="main.main()" file="main.go:11"
+time="2022-01-13T18:27:16+02:00" level=info msg="Start app" func="main.main()" file="main.go:11"
+time="2022-01-14T11:00:31+02:00" level=info msg="Start app" func="main.main()" file="main.go:11"
+time="2022-01-14T11:00:31+02:00" level=fatal msg="listen tcp :8070: bind: address already in use" func="main.main()" file="main.go:18"
+time="2022-01-14T11:01:08+02:00" level=info msg="Start app" func="main.main()" file="main.go:11"
