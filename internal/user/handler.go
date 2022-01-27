@@ -8,13 +8,7 @@ import (
 type handler struct {
 }
 
-//POST /user ----- Register (create) user
-//POST /login ----- Logs user into the system
-//
-//GET /user/active  ----- Get active users
-//GET /chat/ws.rtm.start ----- Endpoint to start real time chat
-
-func NewHandler() handlers.HandlerInterface{
+func NewHandler() handlers.HandlerInterface {
 	return &handler{}
 }
 
