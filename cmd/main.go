@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/labstack/echo/v4"
+	middleware2 "github.com/labstack/echo/v4/middleware"
 	"lets-go-chat-v2/internal/config"
 	"lets-go-chat-v2/internal/middleware"
 	"lets-go-chat-v2/internal/user"
@@ -22,12 +23,14 @@ func main() {
 		logger.Fatalf("%v", err)
 	}
 
-	//repository := postgres.NewUserRepo(postgreSQLClient, logger)
+	repository := postgres.NewUserRepo(postgreSQLClient, logger)
+	logger.Info("register user handler")
 
 	e := echo.New()
-	handler := user.NewHandler()
-	e.Use(middleware.ErrorMiddleware)
-	e.Use()
+	e.Use(middleware.LoggingMiddleware)
+	e.Use(middleware2.Recover())
+
+	handler := user.NewHandler(repository, logger)
 	handler.Register(e)
 	logger.Fatal(e.Start(":8070"))
 	return
