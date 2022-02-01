@@ -34,18 +34,3 @@ func ErrorMiddleware(h AppHandler) echo.HandlerFunc {
 		return nil
 	}
 }
-
-// func LoggingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-//	return func(c echo.Context) error {
-//		start := time.Now()
-//		res := next(c)
-//		log.WithFields(log.Fields{
-//			"method":     c.Request().Method,
-//			"path":       c.Path(),
-//			"status":     c.Response().Status,
-//			"latency_ns": time.Since(start).Nanoseconds(),
-//		}).Info("request details")
-//
-//		return res
-//	}
-//}

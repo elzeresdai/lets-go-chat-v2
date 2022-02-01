@@ -10,7 +10,7 @@ func HashPassword(password string) (string, error) {
 	return hashAndSalt([]byte(password))
 }
 
-//CheckPasswordHash receives user password and hashed string, after compare return true or false depend on result
+//CheckPasswordHash receives users password and hashed string, after compare return true or false depend on result
 func CheckPasswordHash(password, hashed string) bool {
 
 	byteHash := []byte(hashed)

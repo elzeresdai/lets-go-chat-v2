@@ -1,7 +1,7 @@
-package user
+package users
 
 import (
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"lets-go-chat-v2/internal/messages"
 )
 
@@ -13,8 +13,8 @@ type User struct {
 }
 
 type CreateUserRequest struct {
-	UserName string `json:"username"`
-	Password string `json:"password"`
+	UserName string `json:"username" validate:"required,min=4"`
+	Password string `json:"password" validate:"required,min=8"`
 }
 
 // swagger:model LoginUserRequest
