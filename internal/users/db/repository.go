@@ -55,7 +55,7 @@ func (u UserRepo) CreateUser(ctx context.Context, user *users.CreateUserRequest)
 }
 
 func (u UserRepo) GetUser(ctx context.Context, name string) ([]*users.User, bool, error) {
-	query := `SELECT id, name FROM public.users where name = $1`
+	query := `SELECT id, name, hash FROM public.users where name = $1`
 	u.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(query)))
 
 	row, err := u.client.Query(ctx, query, name)
@@ -69,7 +69,7 @@ func (u UserRepo) GetUser(ctx context.Context, name string) ([]*users.User, bool
 	var user users.User
 	existUsers := make([]*users.User, 0)
 	for row.Next() {
-		err := row.Scan(&user.ID, &user.UserName)
+		err := row.Scan(&user.ID, &user.UserName, &user.PasswordHash)
 		if err != nil {
 			u.logger.Error(err)
 			continue
