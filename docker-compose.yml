@@ -1,0 +1,24 @@
+version: '3.1'
+
+services:
+  postgres:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: lets_go_chat
+    ports:
+      - "5432:5432"
+    volumes:
+      - /users/tony_/go/src/lets-go-chat-pgs:/var/lib/postgresql/data
+
+  adminer:
+    container_name: adminer-pgs
+    image: adminer
+    depends_on:
+      - postgres
+    restart: always
+    ports:
+      - "9008:8080"
+
