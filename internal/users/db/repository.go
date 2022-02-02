@@ -81,3 +81,11 @@ func (u UserRepo) GetUser(ctx context.Context, name string) ([]*users.User, bool
 	}
 	return existUsers, exist, nil
 }
+
+func (u *DB) User() users.RepositoryInterface {
+	if u.repo != nil {
+		return u.repo
+	}
+	repoInterface := NewUserRepo(u.client, u.logger)
+	return repoInterface
+}

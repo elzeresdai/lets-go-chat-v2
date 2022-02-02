@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var LoggedUsers []ActiveUsers
+
 func CreateUserReq(e echo.Context) (*CreateUserRequest, error) {
 	user := CreateUserRequest{}
 	err := json.NewDecoder(e.Request().Body).Decode(&user)
@@ -69,8 +71,10 @@ func GetWSLink(userId uuid.UUID, userName string, e echo.Context) {
 		log.Println(err)
 	}
 	token, _ := GenerateToken(userId)
+	LoggedUsers = append(LoggedUsers, ActiveUsers{userName, token})
 	resp := LoginUserResponse{
 		"ws://" + os.Getenv("APP_URL") + ":" + os.Getenv("port") + "/chat/ws.rtm.start/" + token,
 	}
+
 	json.NewEncoder(e.Response()).Encode(resp)
 }

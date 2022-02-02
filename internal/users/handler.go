@@ -3,17 +3,20 @@ package users
 import (
 	"encoding/json"
 	"github.com/labstack/echo/v4"
+	"github.com/maxchagin/go-memorycache-example"
 	"lets-go-chat-v2/internal/customerrors"
 	"lets-go-chat-v2/internal/handlers"
 	"lets-go-chat-v2/internal/middleware"
 	"lets-go-chat-v2/pkg/hasher"
 	"lets-go-chat-v2/pkg/logging"
 	"net/http"
+	"strings"
 )
 
 type handler struct {
 	logger     *logging.Logger
 	repository RepositoryInterface
+	cache      *memorycache.Cache
 }
 
 func NewHandler(repository RepositoryInterface, logger *logging.Logger) handlers.HandlerInterface {
@@ -24,8 +27,8 @@ func NewHandler(repository RepositoryInterface, logger *logging.Logger) handlers
 }
 
 func (h *handler) Register(e *echo.Echo) {
-	e.POST("/users", middleware.ErrorMiddleware(h.CreateUser))
-	e.POST("/users/login", middleware.ErrorMiddleware(h.LoginUser))
+	e.POST("/user", middleware.ErrorMiddleware(h.CreateUser))
+	e.POST("/user/login", middleware.ErrorMiddleware(h.LoginUser))
 	e.GET("user/active", middleware.ErrorMiddleware(h.ActiveUsers))
 }
 
@@ -96,5 +99,18 @@ func (h *handler) LoginUser(e echo.Context) error {
 	return nil
 }
 func (h *handler) ActiveUsers(e echo.Context) error {
+	memCache, err := h.cache.Get("activeUsers")
+	counter := 0
+	if err && memCache != nil {
+		arr := strings.Split(memCache.(string), ":")
+		for _, value := range arr {
+			if value != "" {
+				counter++
+			}
+		}
+	}
+	resp := ActiveUsersResponse{counter}
+	e.Response().WriteHeader(http.StatusOK)
+	json.NewEncoder(e.Response()).Encode(resp)
 	return nil
 }

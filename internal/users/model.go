@@ -36,3 +36,11 @@ type LoginUserResponse struct {
 type ValidationResponse struct {
 	Message string
 }
+
+type ActiveUsersResponse struct {
+	count int
+}
+
+type ActiveUsers struct {
+	UserName, Token string
+}

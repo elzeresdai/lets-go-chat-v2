@@ -2,12 +2,21 @@ package websocket
 
 import (
 	"bytes"
+	"github.com/maxchagin/go-memorycache-example"
+	"lets-go-chat-v2/internal/users"
+	"lets-go-chat-v2/pkg/logging"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+type WS struct {
+	logger *logging.Logger
+	cache  *memorycache.Cache
+}
 
 const (
 	// Time allowed to write a message to the peer.
@@ -35,7 +44,8 @@ var upgrader = websocket.Upgrader{
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub *Hub
+	hub   *Hub
+	cache *memorycache.Cache
 
 	// The websocket connection.
 	conn *websocket.Conn
@@ -117,7 +127,9 @@ func (c *Client) writePump() {
 }
 
 // serveWs handles websocket requests from the peer.
-func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request, repo users.RepositoryInterface) {
+	token := r.URL.Query().Get("token")
+	checkTokenInCache(token)
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -130,4 +142,66 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+}
+
+var Cache *memorycache.Cache
+
+func checkTokenInCache(token string) error {
+	for i, value := range users.LoggedUsers {
+		if value.Token == token {
+			setToCache(value.UserName, value.Token)
+			users.LoggedUsers = remove(users.LoggedUsers, i)
+
+		}
+	}
+	return nil
+}
+
+func remove(generatedTokens []users.ActiveUsers, s int) []users.ActiveUsers {
+	return append(generatedTokens[:s], generatedTokens[s+1:]...)
+}
+
+func checkCacheLogin(token string) bool {
+	mem, err := Cache.Get("activeUsers")
+
+	if err && mem != nil {
+		arr := strings.Split(mem.(string), ":")
+		for _, value := range arr {
+			if value != "" {
+				arrCred := strings.Split(value, "!")
+				if token == arrCred[1] {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func removeFromCache(token string) bool {
+	mem, err := Cache.Get("activeUsers")
+
+	if err && mem != nil {
+		arr := strings.Split(mem.(string), ":")
+		var newCache []string
+		for key, value := range arr {
+			if value != "" {
+				arrCred := strings.Split(value, "!")
+				if token == arrCred[1] {
+					newCache = append(arr[:key], arr[key+1:]...)
+					Cache.Set("activeUsers", strings.Join(newCache, ":"), 10*time.Minute)
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func setToCache(login string, token string) {
+	mem, err := Cache.Get("activeUsers")
+	if !err || mem == nil {
+		mem = ""
+	}
+	Cache.Set("activeUsers", mem.(string)+login+"!"+token+":", 10*time.Minute)
 }
