@@ -50,6 +50,7 @@ var upgrader = websocket.Upgrader{
 type Client struct {
 	hub      *Hub
 	UserName string `json:"UserName"`
+	Token    string `json:"Token"`
 	// The websocket connection.
 	conn   *websocket.Conn
 	cache  *memorycache.Cache
@@ -95,7 +96,7 @@ func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.removeFromCache(c.UserName)
+		c.removeFromCache(c.Token)
 		c.conn.Close()
 
 	}()
@@ -139,19 +140,19 @@ var Cache *memorycache.Cache
 // serveWs handles websocket requests from the peer.
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	userCtxValue := r.Context().Value(middleware.UserContextKey)
+	token := r.URL.Query()["token"]
 	if userCtxValue == nil {
 		log.Println("Not authenticated")
 		return
 	}
 
 	user := userCtxValue.(**auth.UserClaims)
-	//Cache.Set("webSocketUsers", connCache.(string)+(*user).UserName+"!"+token[0]+":", 10*time.Minute)
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, UserName: (*user).UserName, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{hub: hub, UserName: (*user).UserName, Token: token[0], conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
@@ -161,7 +162,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Client) removeFromCache(token string) bool {
-	cacheConnections, err := c.cache.Get("webSocketUsers")
+	cacheConnections, err := cache.Cache.Get("webSocketUsers")
 
 	if err && cacheConnections != nil {
 		arr := strings.Split(cacheConnections.(string), ":")
@@ -171,7 +172,7 @@ func (c *Client) removeFromCache(token string) bool {
 				arrCred := strings.Split(value, "!")
 				if token == arrCred[1] {
 					newCacheConnections = append(arr[:key], arr[key+1:]...)
-					c.cache.Set("webSocketUsers", strings.Join(newCacheConnections, ":"), 10*time.Minute)
+					cache.Cache.Set("webSocketUsers", strings.Join(newCacheConnections, ":"), 10*time.Minute)
 					return true
 				}
 			}
@@ -180,13 +181,13 @@ func (c *Client) removeFromCache(token string) bool {
 	return false
 }
 
-func (c *Client) saveToCache(token string) {
+func (c *Client) saveToCache() {
 	cacheConnections, err := cache.Cache.Get("webSocketUsers")
 	fmt.Println("saveToCache", cacheConnections)
 	if !err || cacheConnections == nil {
 		cacheConnections = ""
 	}
-	c.cache.Set("activeUsers", cacheConnections.(string)+c.UserName+"!"+token+":", 10*time.Minute)
+	cache.Cache.Set("activeUsers", cacheConnections.(string)+c.UserName+"!"+c.Token+":", 10*time.Minute)
 }
 
 func (c *Client) sendMissedMessages() {
@@ -200,6 +201,7 @@ func (c *Client) sendMissedMessages() {
 		}
 		w.Write([]byte(message.Message))
 	}
+	c.saveToCache()
 
 }
 
