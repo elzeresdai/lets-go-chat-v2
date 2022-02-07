@@ -6,14 +6,20 @@ import (
 	"github.com/labstack/echo/v4"
 	middleware2 "github.com/labstack/echo/v4/middleware"
 	"lets-go-chat-v2/internal/config"
+	db2 "lets-go-chat-v2/internal/messages/db"
 	"lets-go-chat-v2/internal/middleware"
 	"lets-go-chat-v2/internal/users"
 	"lets-go-chat-v2/internal/users/db"
-	websocket2 "lets-go-chat-v2/internal/users/websocket"
 	"lets-go-chat-v2/pkg/client/postgresql"
 	"lets-go-chat-v2/pkg/logging"
+	"lets-go-chat-v2/pkg/websocket"
+	"log"
 	"os"
 )
+
+type ContextValue struct {
+	echo.Context
+}
 
 func main() {
 	logger := logging.GetLogger()
@@ -36,6 +42,7 @@ func main() {
 	}
 
 	repository := db.NewUserRepo(postgreSQLClient, logger)
+	messageRepo := db2.NewMessageRepo(postgreSQLClient, logger)
 	logger.Info("register users handler")
 
 	e := echo.New()
@@ -45,12 +52,14 @@ func main() {
 	handler := users.NewHandler(repository, logger)
 	handler.Register(e)
 
-	hub := websocket2.NewHub()
+	hub := websocket.NewHub(repository, messageRepo)
 	go hub.Run()
-	e.GET("/chat/ws.rtm.start/", func(c echo.Context) error {
-		websocket2.ServeWs(hub, c.Response(), c.Request(), repository)
+
+	e.GET("/chat/ws.rtm.start", middleware.AuthMiddleware(func(c echo.Context) error {
+		log.Println(c.Request().Context())
+		websocket.ServeWs(hub, c.Response(), c.Request())
 		return nil
-	})
+	}))
 	logger.Fatal(e.Start(":" + port))
 	return
 }

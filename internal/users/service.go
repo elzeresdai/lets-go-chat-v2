@@ -2,18 +2,15 @@ package users
 
 import (
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
+	"lets-go-chat-v2/pkg/utils/cache"
 	"net/http"
 	"os"
 	"time"
 )
-
-var LoggedUsers []ActiveUsers
 
 func CreateUserReq(e echo.Context) (*CreateUserRequest, error) {
 	user := CreateUserRequest{}
@@ -52,29 +49,22 @@ func IsValidRequest(user CreateUserRequest) bool {
 
 }
 
-func GenerateToken(userId uuid.UUID) (string, error) {
-	atClaims := jwt.MapClaims{}
-	atClaims["authorized"] = true
-	atClaims["user_id"] = userId
-	atClaims["exp"] = time.Now().Add(time.Minute * 15).Unix()
-	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	token, err := at.SignedString([]byte(os.Getenv("ACCESS_SECRET")))
-	if err != nil {
-		return "", err
-	}
-	return token, nil
-}
-
-func GetWSLink(userId uuid.UUID, userName string, e echo.Context) {
+func GetWSLink(user User, e echo.Context, token string) {
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println(err)
 	}
-	token, _ := GenerateToken(userId)
-	LoggedUsers = append(LoggedUsers, ActiveUsers{userName, token})
 	resp := LoginUserResponse{
-		"ws://" + os.Getenv("APP_URL") + ":" + os.Getenv("port") + "/chat/ws.rtm.start/" + token,
+		"ws://" + os.Getenv("APP_URL") + ":" + os.Getenv("port") + "/chat/ws.rtm.start?token=" + token,
 	}
-
+	saveToCache(token, user.UserName)
 	json.NewEncoder(e.Response()).Encode(resp)
+}
+
+func saveToCache(token string, userName string) {
+	cacheConnections, err := cache.Cache.Get("webSocketUsers")
+	if !err || cacheConnections == nil {
+		cacheConnections = ""
+	}
+	cache.Cache.Set("activeUsers", cacheConnections.(string)+userName+"!"+token+":", 10*time.Minute)
 }

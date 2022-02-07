@@ -25,11 +25,6 @@ func NewUserRepo(client postgresql.Client, logger *logging.Logger) users.Reposit
 	}
 }
 
-func (u UserRepo) LoginUser(ctx context.Context, user *users.LoginUserRequest) (*users.User, error) {
-
-	panic("implement me")
-}
-
 func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }
@@ -80,12 +75,4 @@ func (u UserRepo) GetUser(ctx context.Context, name string) ([]*users.User, bool
 		exist = true
 	}
 	return existUsers, exist, nil
-}
-
-func (u *DB) User() users.RepositoryInterface {
-	if u.repo != nil {
-		return u.repo
-	}
-	repoInterface := NewUserRepo(u.client, u.logger)
-	return repoInterface
 }

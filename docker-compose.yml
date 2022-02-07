@@ -21,4 +21,3 @@ services:
     restart: always
     ports:
       - "9008:8080"
-

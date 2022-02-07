@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"github.com/labstack/echo/v4"
 	"github.com/maxchagin/go-memorycache-example"
+	"lets-go-chat-v2/internal/auth"
 	"lets-go-chat-v2/internal/customerrors"
 	"lets-go-chat-v2/internal/handlers"
 	"lets-go-chat-v2/internal/middleware"
 	"lets-go-chat-v2/pkg/hasher"
 	"lets-go-chat-v2/pkg/logging"
+	"lets-go-chat-v2/pkg/utils/cache"
 	"net/http"
 	"strings"
 )
@@ -94,12 +96,14 @@ func (h *handler) LoginUser(e echo.Context) error {
 		json.NewEncoder(e.Response()).Encode(err)
 	}
 
-	GetWSLink(login[0].ID, user.UserName, e)
+	token, _ := auth.CreateJWTToken(login[0].UserName, login[0].ID)
+	e.Response().Write([]byte(token))
+	GetWSLink(*login[0], e, token)
 
 	return nil
 }
 func (h *handler) ActiveUsers(e echo.Context) error {
-	memCache, err := h.cache.Get("activeUsers")
+	memCache, err := cache.Cache.Get("webSocketUsers")
 	counter := 0
 	if err && memCache != nil {
 		arr := strings.Split(memCache.(string), ":")

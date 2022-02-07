@@ -5,12 +5,6 @@ import (
 )
 
 type Message struct {
-	ID      string `json:"id"`
-	message string `json:"message"`
-	userId  uuid.UUID
-}
-
-type MessageRequest struct {
-	userId  uuid.UUID
-	message string
+	Message string    `json:"message"`
+	UserId  uuid.UUID `json:"userId"`
 }
