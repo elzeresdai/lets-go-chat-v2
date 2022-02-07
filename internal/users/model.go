@@ -2,14 +2,12 @@ package users
 
 import (
 	"github.com/google/uuid"
-	"lets-go-chat-v2/internal/messages"
 )
 
 type User struct {
 	ID           uuid.UUID
-	UserName     string           `json:"username"`
-	PasswordHash string           `json:"-"`
-	Messages     messages.Message `json:"messages"`
+	UserName     string `json:"username"`
+	PasswordHash string `json:"-"`
 }
 
 type CreateUserRequest struct {
@@ -43,4 +41,10 @@ type ActiveUsersResponse struct {
 
 type ActiveUsers struct {
 	UserName, Token string
+}
+
+type UserMessage struct {
+	ID      int
+	UserId  uuid.UUID `json:"userId"`
+	Message string
 }

@@ -2,9 +2,13 @@ package websocket
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"github.com/maxchagin/go-memorycache-example"
-	"lets-go-chat-v2/internal/users"
+	"lets-go-chat-v2/internal/auth"
+	"lets-go-chat-v2/internal/middleware"
 	"lets-go-chat-v2/pkg/logging"
+	"lets-go-chat-v2/pkg/utils/cache"
 	"log"
 	"net/http"
 	"strings"
@@ -44,12 +48,12 @@ var upgrader = websocket.Upgrader{
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub   *Hub
-	cache *memorycache.Cache
-
+	hub      *Hub
+	UserName string `json:"UserName"`
 	// The websocket connection.
-	conn *websocket.Conn
-
+	conn   *websocket.Conn
+	cache  *memorycache.Cache
+	logger *logging.Logger
 	// Buffered channel of outbound messages.
 	send chan []byte
 }
@@ -76,7 +80,9 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		c.CreateNewMessage(string(message))
 		c.hub.broadcast <- message
+
 	}
 }
 
@@ -89,7 +95,9 @@ func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
+		c.removeFromCache(c.UserName)
 		c.conn.Close()
+
 	}()
 	for {
 		select {
@@ -126,70 +134,44 @@ func (c *Client) writePump() {
 	}
 }
 
+var Cache *memorycache.Cache
+
 // serveWs handles websocket requests from the peer.
-func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request, repo users.RepositoryInterface) {
-	token := r.URL.Query().Get("token")
-	checkTokenInCache(token)
+func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	userCtxValue := r.Context().Value(middleware.UserContextKey)
+	if userCtxValue == nil {
+		log.Println("Not authenticated")
+		return
+	}
+
+	user := userCtxValue.(**auth.UserClaims)
+	//Cache.Set("webSocketUsers", connCache.(string)+(*user).UserName+"!"+token[0]+":", 10*time.Minute)
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{hub: hub, UserName: (*user).UserName, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
-
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
+	go client.sendMissedMessages()
 	go client.writePump()
 	go client.readPump()
 }
 
-var Cache *memorycache.Cache
+func (c *Client) removeFromCache(token string) bool {
+	cacheConnections, err := c.cache.Get("webSocketUsers")
 
-func checkTokenInCache(token string) error {
-	for i, value := range users.LoggedUsers {
-		if value.Token == token {
-			setToCache(value.UserName, value.Token)
-			users.LoggedUsers = remove(users.LoggedUsers, i)
-
-		}
-	}
-	return nil
-}
-
-func remove(generatedTokens []users.ActiveUsers, s int) []users.ActiveUsers {
-	return append(generatedTokens[:s], generatedTokens[s+1:]...)
-}
-
-func checkCacheLogin(token string) bool {
-	mem, err := Cache.Get("activeUsers")
-
-	if err && mem != nil {
-		arr := strings.Split(mem.(string), ":")
-		for _, value := range arr {
-			if value != "" {
-				arrCred := strings.Split(value, "!")
-				if token == arrCred[1] {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func removeFromCache(token string) bool {
-	mem, err := Cache.Get("activeUsers")
-
-	if err && mem != nil {
-		arr := strings.Split(mem.(string), ":")
-		var newCache []string
+	if err && cacheConnections != nil {
+		arr := strings.Split(cacheConnections.(string), ":")
+		var newCacheConnections []string
 		for key, value := range arr {
 			if value != "" {
 				arrCred := strings.Split(value, "!")
 				if token == arrCred[1] {
-					newCache = append(arr[:key], arr[key+1:]...)
-					Cache.Set("activeUsers", strings.Join(newCache, ":"), 10*time.Minute)
+					newCacheConnections = append(arr[:key], arr[key+1:]...)
+					c.cache.Set("webSocketUsers", strings.Join(newCacheConnections, ":"), 10*time.Minute)
 					return true
 				}
 			}
@@ -198,10 +180,37 @@ func removeFromCache(token string) bool {
 	return false
 }
 
-func setToCache(login string, token string) {
-	mem, err := Cache.Get("activeUsers")
-	if !err || mem == nil {
-		mem = ""
+func (c *Client) saveToCache(token string) {
+	cacheConnections, err := cache.Cache.Get("webSocketUsers")
+	fmt.Println("saveToCache", cacheConnections)
+	if !err || cacheConnections == nil {
+		cacheConnections = ""
 	}
-	Cache.Set("activeUsers", mem.(string)+login+"!"+token+":", 10*time.Minute)
+	c.cache.Set("activeUsers", cacheConnections.(string)+c.UserName+"!"+token+":", 10*time.Minute)
+}
+
+func (c *Client) sendMissedMessages() {
+
+	userMessages, _ := c.hub.messageRepository.GetUnreadMessages(context.TODO())
+	for _, message := range userMessages {
+		fmt.Println(message)
+		w, err := c.conn.NextWriter(websocket.TextMessage)
+		if err != nil {
+			return
+		}
+		w.Write([]byte(message.Message))
+	}
+
+}
+
+func (c *Client) CreateNewMessage(message string) {
+	user, _, err := c.hub.userRepository.GetUser(context.TODO(), c.UserName)
+	if err != nil {
+		c.logger.Error(err)
+	}
+	_, err = c.hub.messageRepository.CreateUserMessage(context.TODO(), user[0].ID, message)
+	if err != nil {
+		c.logger.Error(err)
+	}
+
 }

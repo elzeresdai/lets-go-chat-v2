@@ -1,5 +1,10 @@
 package websocket
 
+import (
+	"lets-go-chat-v2/internal/messages"
+	"lets-go-chat-v2/internal/users"
+)
+
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
@@ -14,15 +19,21 @@ type Hub struct {
 
 	// Unregister requests from clients.
 	unregister chan *Client
+
+	userRepository    users.RepositoryInterface
+	messageRepository messages.MessageRepositoryInterface
 }
 
-func NewHub() *Hub {
+func NewHub(userRepository users.RepositoryInterface, messageRepository messages.MessageRepositoryInterface) *Hub {
 	return &Hub{
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		broadcast:         make(chan []byte),
+		register:          make(chan *Client),
+		unregister:        make(chan *Client),
+		clients:           make(map[*Client]bool),
+		userRepository:    userRepository,
+		messageRepository: messageRepository,
 	}
+
 }
 
 func (h *Hub) Run() {
