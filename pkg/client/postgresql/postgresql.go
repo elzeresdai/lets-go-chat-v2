@@ -6,8 +6,6 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/joho/godotenv"
-	"lets-go-chat-v2/internal/config"
 	repeatable "lets-go-chat-v2/pkg/utils"
 	"log"
 	"os"
@@ -20,9 +18,8 @@ type Client interface {
 	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
 }
 
-func NewClient(ctx context.Context, maxAttempts int, sc config.StorageConfig) (pool *pgxpool.Pool, err error) {
+func NewClient(ctx context.Context, maxAttempts int) (pool *pgxpool.Pool, err error) {
 	//dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", sc.Username, sc.Password, sc.Host, sc.Port, sc.Database)
-	godotenv.Load(".env")
 	dsn := fmt.Sprintf(os.Getenv("DATABASE_URL"))
 	err = repeatable.DoWithTries(func() error {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

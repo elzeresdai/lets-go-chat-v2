@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	middleware2 "github.com/labstack/echo/v4/middleware"
-	"lets-go-chat-v2/internal/config"
 	db2 "lets-go-chat-v2/internal/messages/db"
 	"lets-go-chat-v2/internal/middleware"
 	"lets-go-chat-v2/internal/users"
@@ -25,18 +23,11 @@ func main() {
 	logger := logging.GetLogger()
 	logger.Info("Start app")
 
-	cfg := config.GetConfig()
+	//cfg := config.GetConfig()
 
-	err := godotenv.Load(".env")
-	if err != nil {
-		logger.Fatalf("Error loading .env file")
-	}
 	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8090"
-	}
 
-	postgreSQLClient, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
+	postgreSQLClient, err := postgresql.NewClient(context.TODO(), 3)
 	if err != nil {
 		logger.Fatalf("%v", err)
 	}
