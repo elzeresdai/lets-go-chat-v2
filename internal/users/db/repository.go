@@ -50,7 +50,7 @@ func (u UserRepo) CreateUser(ctx context.Context, user *users.CreateUserRequest)
 }
 
 func (u UserRepo) GetUser(ctx context.Context, name string) ([]*users.User, bool, error) {
-	query := `SELECT id, name, hash FROM public.users where name = $1`
+	query := `SELECT id, name, hash FROM users where name = $1`
 	u.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(query)))
 
 	row, err := u.client.Query(ctx, query, name)
