@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	middleware2 "github.com/labstack/echo/v4/middleware"
 	db2 "lets-go-chat-v2/internal/messages/db"
@@ -24,6 +25,10 @@ func main() {
 	logger.Info("Start app")
 
 	//cfg := config.GetConfig()
+	err := godotenv.Load(".env")
+	if err != nil {
+		logger.Fatalf("Error loading .env file")
+	}
 
 	port := os.Getenv("PORT")
 
