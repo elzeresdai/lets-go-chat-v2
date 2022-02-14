@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgconn"
+	"github.com/maxchagin/go-memorycache-example"
 	"lets-go-chat-v2/internal/users"
 	"lets-go-chat-v2/pkg/client/postgresql"
 	"lets-go-chat-v2/pkg/hasher"
@@ -16,12 +17,14 @@ import (
 type UserRepo struct {
 	client postgresql.Client
 	logger *logging.Logger
+	cache  *memorycache.Cache
 }
 
-func NewUserRepo(client postgresql.Client, logger *logging.Logger) users.RepositoryInterface {
+func NewUserRepo(client postgresql.Client, logger *logging.Logger, cache *memorycache.Cache) users.RepositoryInterface {
 	return &UserRepo{
 		client: client,
 		logger: logger,
+		cache:  cache,
 	}
 }
 

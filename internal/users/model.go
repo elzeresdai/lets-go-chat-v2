@@ -1,6 +1,7 @@
 package users
 
 import (
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -32,7 +33,7 @@ type LoginUserResponse struct {
 	Url string
 }
 type ValidationResponse struct {
-	Message string
+	Message validator.FieldError
 }
 
 type ActiveUsersResponse struct {
@@ -41,10 +42,4 @@ type ActiveUsersResponse struct {
 
 type ActiveUsers struct {
 	UserName, Token string
-}
-
-type UserMessage struct {
-	ID      int
-	UserId  uuid.UUID `json:"userId"`
-	Message string
 }

@@ -10,38 +10,45 @@ import (
 	"lets-go-chat-v2/internal/middleware"
 	"lets-go-chat-v2/pkg/hasher"
 	"lets-go-chat-v2/pkg/logging"
-	"lets-go-chat-v2/pkg/utils/cache"
 	"net/http"
 	"strings"
 )
 
-type handler struct {
-	logger     *logging.Logger
-	repository RepositoryInterface
-	cache      *memorycache.Cache
+type Handler struct {
+	Logger     *logging.Logger
+	Repository RepositoryInterface
+	Cache      memorycache.Cache
 }
 
-func NewHandler(repository RepositoryInterface, logger *logging.Logger) handlers.HandlerInterface {
-	return &handler{
-		repository: repository,
-		logger:     logger,
+func NewHandler(repository RepositoryInterface, logger *logging.Logger, cache memorycache.Cache) handlers.HandlerInterface {
+	return &Handler{
+		Repository: repository,
+		Logger:     logger,
+		Cache:      cache,
 	}
 }
 
-func (h *handler) Register(e *echo.Echo) {
+func (h *Handler) Register(e *echo.Echo) {
 	e.POST("/user", middleware.ErrorMiddleware(h.CreateUser))
 	e.POST("/user/login", middleware.ErrorMiddleware(h.LoginUser))
 	e.GET("user/active", middleware.ErrorMiddleware(h.ActiveUsers))
 }
 
-func (h *handler) CreateUser(e echo.Context) error {
-	user, err := CreateUserReq(e)
+func (h *Handler) CreateUser(e echo.Context) error {
+	user, err, er := CreateUserReq(e)
 	if err != nil {
-		h.logger.Error(err)
+		h.Logger.Error(err)
 		return err
 	}
-	_, exist, er := h.repository.GetUser(e.Request().Context(), user.UserName)
 	if er != nil {
+		for _, ers := range er {
+			e.Response().WriteHeader(http.StatusNotFound)
+			e.Response().Write((*customerrors.AppError).Marshal(ers))
+		}
+		return nil
+	}
+	_, exist, ers := h.Repository.GetUser(e.Request().Context(), user.UserName)
+	if ers != nil {
 		return err
 	}
 	if exist {
@@ -51,9 +58,9 @@ func (h *handler) CreateUser(e echo.Context) error {
 		return nil
 	}
 
-	newUser, err := h.repository.CreateUser(e.Request().Context(), user)
+	newUser, err := h.Repository.CreateUser(e.Request().Context(), user)
 	if err != nil {
-		h.logger.Error(err)
+		h.Logger.Error(err)
 		return err
 	}
 	e.Response().WriteHeader(http.StatusOK)
@@ -66,13 +73,23 @@ func (h *handler) CreateUser(e echo.Context) error {
 	return nil
 }
 
-func (h *handler) LoginUser(e echo.Context) error {
-	user, err := CreateUserReq(e)
+func (h *Handler) LoginUser(e echo.Context) error {
+	user, err, er := CreateUserReq(e)
 	if err != nil {
-		h.logger.Error(err)
+		h.Logger.Error(err)
 		return err
 	}
-	login, exist, _ := h.repository.GetUser(e.Request().Context(), user.UserName)
+	if er != nil {
+		for _, ers := range er {
+			e.Response().WriteHeader(http.StatusNotFound)
+			e.Response().Write((*customerrors.AppError).Marshal(ers))
+		}
+		return nil
+	}
+	login, exist, err := h.Repository.GetUser(e.Request().Context(), user.UserName)
+	if err != nil {
+		h.Logger.Error(err)
+	}
 	if !exist {
 		e.Response().WriteHeader(http.StatusBadRequest)
 		err := customerrors.NewAppError(
@@ -81,8 +98,9 @@ func (h *handler) LoginUser(e echo.Context) error {
 			"",
 			"400",
 		)
-		h.logger.Error(err)
+		h.Logger.Error(err)
 		json.NewEncoder(e.Response()).Encode(err)
+
 	}
 	if !hasher.CheckPasswordHash(user.Password, login[0].PasswordHash) {
 		e.Response().WriteHeader(http.StatusBadRequest)
@@ -92,18 +110,18 @@ func (h *handler) LoginUser(e echo.Context) error {
 			"",
 			"400",
 		)
-		h.logger.Error(err)
+		h.Logger.Error(err)
 		json.NewEncoder(e.Response()).Encode(err)
+		return nil
 	}
 
 	token, _ := auth.CreateJWTToken(login[0].UserName, login[0].ID)
-	e.Response().Write([]byte(token))
 	GetWSLink(*login[0], e, token)
 
 	return nil
 }
-func (h *handler) ActiveUsers(e echo.Context) error {
-	memCache, err := cache.Cache.Get("webSocketUsers")
+func (h *Handler) ActiveUsers(e echo.Context) error {
+	memCache, err := h.Cache.Get("activeUsers")
 	counter := 0
 	if err && memCache != nil {
 		arr := strings.Split(memCache.(string), ":")
