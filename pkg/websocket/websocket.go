@@ -181,7 +181,7 @@ func (c *Client) removeFromCache(token string) bool {
 	return false
 }
 
-func (c *Client) saveToCache() {
+func (c *Client) SaveToCache() {
 	cacheConnections, err := cache.Cache.Get("webSocketUsers")
 	fmt.Println("saveToCache", cacheConnections)
 	if !err || cacheConnections == nil {
@@ -201,7 +201,7 @@ func (c *Client) sendMissedMessages() {
 		}
 		w.Write([]byte(message.Message))
 	}
-	c.saveToCache()
+	c.SaveToCache()
 
 }
 

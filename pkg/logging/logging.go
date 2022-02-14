@@ -1,12 +1,12 @@
 package logging
 
 import (
-"fmt"
-"github.com/sirupsen/logrus"
-"io"
-"os"
-"path"
-"runtime"
+	"fmt"
+	"github.com/sirupsen/logrus"
+	"io"
+	"os"
+	"path"
+	"runtime"
 )
 
 type writerHook struct {
