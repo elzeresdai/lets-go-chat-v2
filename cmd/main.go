@@ -59,7 +59,7 @@ func main() {
 	e.Use(middleware2.Recover())
 	e.Use(middleware.LoggingMiddleware)
 
-	handler := users.NewHandler(repository, logger, cache)
+	handler := users.NewHandler(repository, logger)
 	handler.Register(e)
 
 	hub := websocket.NewHub(repository, messageRepo)
