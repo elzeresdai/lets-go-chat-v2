@@ -1,4 +1,52 @@
 basePath: /v2
+definitions:
+  customerrors.AppError:
+    properties:
+      code:
+        type: string
+      developer_message:
+        type: string
+      message:
+        type: string
+    type: object
+  messages.Message:
+    properties:
+      message:
+        type: string
+      userId:
+        type: string
+    type: object
+  users.CreateUserRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      username:
+        minLength: 4
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  users.CreateUserResponse:
+    properties:
+      id:
+        type: string
+      userName:
+        type: string
+    type: object
+  users.LoginUserRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      userName:
+        minLength: 4
+        type: string
+    required:
+    - password
+    - userName
+    type: object
 host: petstore.swagger.io
 info:
   contact:
@@ -12,5 +60,100 @@ info:
   termsOfService: http://swagger.io/terms/
   title: Swagger Example API
   version: "1.0"
-paths: {}
+paths:
+  /user:
+    post:
+      parameters:
+      - description: create user
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/users.CreateUserRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/users.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/customerrors.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/customerrors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create user
+      tags:
+      - user
+  /user/active:
+    get:
+      description: successful operation, returns number of active users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Number of active users in a chat
+      tags:
+      - user
+  /user/login:
+    post:
+      description: successful operation, returns link to join chat
+      parameters:
+      - description: login user
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/users.LoginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/customerrors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Login user
+      tags:
+      - user
+  /v1/chat/ws.rtm.start/{token}:
+    get:
+      description: One time token for a logged user
+      parameters:
+      - description: token auth
+        in: path
+        name: token
+        required: true
+        type: string
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            $ref: '#/definitions/messages.Message'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/messages.Message'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Endpoint to start real time chat
+      tags:
+      - chat
 swagger: "2.0"

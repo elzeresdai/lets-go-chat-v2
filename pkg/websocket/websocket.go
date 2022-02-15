@@ -137,7 +137,15 @@ func (c *Client) writePump() {
 
 var Cache *memorycache.Cache
 
-// serveWs handles websocket requests from the peer.
+// ServeWs godoc
+// @tags chat
+// @Summary Endpoint to start real time chat
+// @Param token path string true "token auth"
+// @Router /chat/ws.rtm.start/{token} [get]
+// @description One time token for a logged user
+// @Failure 101 {object} messages.Message
+// @Failure 400 {object} messages.Message
+// @Failure 500 {string} Internal Server Error
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	userCtxValue := r.Context().Value(middleware.UserContextKey)
 	token := r.URL.Query()["token"]

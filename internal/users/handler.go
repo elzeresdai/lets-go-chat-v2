@@ -20,11 +20,10 @@ type Handler struct {
 	Cache      memorycache.Cache
 }
 
-func NewHandler(repository RepositoryInterface, logger *logging.Logger, cache memorycache.Cache) handlers.HandlerInterface {
+func NewHandler(repository RepositoryInterface, logger *logging.Logger) handlers.HandlerInterface {
 	return &Handler{
 		Repository: repository,
 		Logger:     logger,
-		Cache:      cache,
 	}
 }
 
@@ -34,6 +33,15 @@ func (h *Handler) Register(e *echo.Echo) {
 	e.GET("user/active", middleware.ErrorMiddleware(h.ActiveUsers))
 }
 
+// CreateUser godoc
+// @tags user
+// @Summary Create user
+// @Param user body CreateUserRequest true "create user"
+// @Success 201 {object} CreateUserResponse
+// @Router /user [post]
+// @Failure 404 {object} customerrors.AppError
+// @Failure 400 {object} customerrors.AppError
+// @Failure 500 {string} Internal Server Error
 func (h *Handler) CreateUser(e echo.Context) error {
 	user, err, er := CreateUserReq(e)
 	if err != nil {
@@ -73,6 +81,16 @@ func (h *Handler) CreateUser(e echo.Context) error {
 	return nil
 }
 
+// LoginUser godoc
+// @Summary Login user
+// @Param user body LoginUserRequest true "login user"
+// @description successful operation, returns link to join chat
+// @tags user
+// @Produce json
+// @Success 200
+// @Router /user/login [post]
+// @Failure 404 {object} customerrors.AppError
+// @Failure 500 {string} Internal Server Error
 func (h *Handler) LoginUser(e echo.Context) error {
 	user, err, er := CreateUserReq(e)
 	if err != nil {
@@ -120,6 +138,15 @@ func (h *Handler) LoginUser(e echo.Context) error {
 
 	return nil
 }
+
+// ActiveUsers godoc
+// @Summary Number of active users in a chat
+// @description successful operation, returns number of active users
+// @tags user
+// @Produce json
+// @Success 200
+// @Router /user/active [get]
+// @Failure 500 {string} Internal Server Error
 func (h *Handler) ActiveUsers(e echo.Context) error {
 	memCache, err := h.Cache.Get("activeUsers")
 	counter := 0
